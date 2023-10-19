@@ -1,0 +1,72 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'ap-south-1'  // Change to your desired AWS region
+        APP_NAME = 'Python-Flask'  // Change to your Elastic Beanstalk application name
+        ENV_NAME = 'Python-Flask-env'  // Change to your Elastic Beanstalk environment name
+        /*VERSION_LABEL = 'Sample-${BUILD_ID}'*/
+        S3_BUCKET='elasticbeanstalk-ap-south-1-125762449052'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([
+                $class: 'GitSCM',
+                branches: [[name: '*/master']], // Replace 'main' with your branch name
+                userRemoteConfigs: [[url: 'https://github.com/sanketsj991/Assingmentsj.git']], // Replace with your Git repository URL
+                extensions: [
+                    [$class: 'CleanCheckout'],
+                    [$class: 'CloneOption', depth: 1]
+                ]
+                ])
+            }
+        }    
+
+        stage('Build and Test') {
+            steps {
+                script {
+                    sh 'python3 -m venv venv'
+                    sh 'venv/bin/python -m pip install -r requirements.txt'
+                }
+            }
+        }
+        stage('Package Application') {
+            steps {
+                script {
+                    sh 'zip -r application.zip . -x "*.git*" -x "venv/*" -x "application.zip"'
+                    sh 'aws s3 cp application.zip s3://elasticbeanstalk-ap-south-1-125762449052/$VERSION_LABEL/application.zip'
+                }
+            }
+        }
+        /*stage('Lint Code with Pylint') {
+            steps {
+                script {
+                    // Run pylint on your code
+                    sh 'pip install pylint mypy'
+                    sh 'pylint application.py'
+                }
+            }
+        }*/
+        stage('Deploy to AWS Elastic Beanstalk') {
+            steps {
+                script {
+                    echo "$VERSION_LABEL"
+                    sh "aws elasticbeanstalk create-application-version --application-name $APP_NAME --version-label $VERSION_LABEL --source-bundle S3Bucket=$S3_BUCKET,S3Key=$VERSION_LABEL/application.zip"
+                    sh "aws elasticbeanstalk update-environment --environment-name $ENV_NAME --version-label $VERSION_LABEL"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                echo 'Deployment successful!'
+
+                // Optionally, you can include notifications or other post-deployment steps.
+            }
+        }
+    }
+}
