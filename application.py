@@ -3,7 +3,11 @@ from flask import Flask
 application = Flask(__name)
 
 @application.route('/')
-def hello():
+def hello() -> str:
+    """
+    This is the docstring for the hello function.
+    It returns a greeting message.
+    """
     return "Hello, World!"
 
 if __name__ == '__main__':
