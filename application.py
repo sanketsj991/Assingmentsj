@@ -1,3 +1,7 @@
+"""
+Your module docstring goes here (replace this line).
+"""
+
 from flask import Flask
 
 application = Flask(__name)
